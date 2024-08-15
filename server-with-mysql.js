@@ -1,5 +1,5 @@
 import { createApp } from './app.js'
 
-import { MovieModel } from './models/movie.js'
+import { ChivasModel } from './models/mysql/chivas.js'
 
-createApp( { movieModel: MovieModel })
+createApp( { chivasModel: ChivasModel })

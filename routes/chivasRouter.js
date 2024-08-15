@@ -6,5 +6,5 @@ export const createChivasRouter = ( { chivasModel } ) => {
 
   const controller = new ChivasController({ chivasModel })
 
-  chivasRouter.get('/', ChivasController.getAll())
+  chivasRouter.get('/', controller.getAll())
 }
