@@ -6,5 +6,14 @@ export const createChivasRouter = ( { chivasModel } ) => {
 
   const controller = new ChivasController({ chivasModel })
 
-  chivasRouter.get('/', controller.getAll())
+  //chivasRouter.get('/viajes', controller.getAll)
+  //chivasRouter.get('/viajes/:id', controller.getOne)
+  //chivasRouter.post('/reserva', controller.create)
+
+  chivasRouter.post('/login', controller.login)
+  chivasRouter.post('/register', controller.register)
+  //chivasRouter.post('/logout', controller.logout)
+  //chivasRouter.get('/protected', controller.protected)
+
+  return chivasRouter
 }
