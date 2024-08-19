@@ -67,74 +67,80 @@ export class ChivasModel {
   }
 }
 
+import { z } from 'zod';
+
 class Validation {
-  static correo (email) {
-    const schema = zod.string().email()
-    const result = schema.safeParse(email)
+  static correo(email) {
+    const schema = z.string().email('El correo electrónico no es válido');
+    const result = schema.safeParse(email);
     
     if (!result.success) {
-      return result.error.errors
+      return { success: false, errors: result.error.errors.map(e => e.message) };
     }
 
-    return result.success
+    return { success: true };
   }
 
-  static documento (document) {
-    const schema = zod.number().int().min(8)
-    const result = schema.safeParse(document)
+  static documento(document) {
+    const schema = z.string().min(8, 'El documento debe tener al menos 8 caracteres').transform(Number);
+    const result = schema.safeParse(document);
     
     if (!result.success) {
-      return result.error.errors
-    }  
-    return result.success
+      return { success: false, errors: result.error.errors.map(e => e.message) };
+    }
+
+    return { success: true };
   }
 
-  static fullName (name) {
-    const schema = zod.string().min(2)
-    const result = schema.safeParse(name)
+  static fullName(name) {
+    const schema = z.string().min(2, 'El nombre completo debe tener al menos 2 caracteres');
+    const result = schema.safeParse(name);
 
     if (!result.success) {
-      return result.error.errors
+      return { success: false, errors: result.error.errors.map(e => e.message) };
     }
-    return result.success
+
+    return { success: true };
   }
 
-  static phone (phone) {
-    const schema = zod.string().min(7)
-    const result = schema.safeParse(phone)
+  static phone(phone) {
+    const schema = z.string().min(7, 'El número de teléfono debe tener al menos 7 caracteres');
+    const result = schema.safeParse(phone);
 
     if (!result.success) {
-      return result.error.errors
+      return { success: false, errors: result.error.errors.map(e => e.message) };
     }
-    return result.success
+
+    return { success: true };
   }
 
-  static eps (eps) {
-    const schema = zod.string().min(2)
-    const result = schema.safeParse(eps)
+  static eps(eps) {
+    const schema = z.string().min(2, 'La EPS debe tener al menos 2 caracteres');
+    const result = schema.safeParse(eps);
 
     if (!result.success) {
-      return result.error.errors
+      return { success: false, errors: result.error.errors.map(e => e.message) };
     }
-    return result.success
+
+    return { success: true };
   }
 
-  static password (password) {
-    const schema = zod.string()
-    .min(8, 'La contraseña debe tener al menos 8 caracteres')
-    .max(100, 'La contraseña no puede tener más de 100 caracteres')
-    .regex(/[A-Z]/, 'La contraseña debe contener al menos una letra mayúscula')
-    .regex(/[a-z]/, 'La contraseña debe contener al menos una letra minúscula')
-    .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
-    .regex(/[\W_]/, 'La contraseña debe contener al menos un carácter especial')
+  static password(password) {
+    const schema = z.string()
+      .min(8, 'La contraseña debe tener al menos 8 caracteres')
+      .max(100, 'La contraseña no puede tener más de 100 caracteres')
+      .regex(/[A-Z]/, 'La contraseña debe contener al menos una letra mayúscula')
+      .regex(/[a-z]/, 'La contraseña debe contener al menos una letra minúscula')
+      .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
+      .regex(/[\W_]/, 'La contraseña debe contener al menos un carácter especial');
 
-    const passwordValidationResult = schema.safeParse(password)
+    const passwordValidationResult = schema.safeParse(password);
 
     if (!passwordValidationResult.success) {
-      const errors = passwordValidationResult.error.errors.map(error => error.message)
-      throw new Error(`Error de validación de password: ${errors.join(', ')}`)
+      const errors = passwordValidationResult.error.errors.map(error => error.message);
+      return { success: false, errors };
     }
 
-    return passwordValidationResult.success
+    return { success: true };
   }
 }
