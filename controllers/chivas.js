@@ -31,12 +31,13 @@ export class ChivasController {
   }
 
   register = async (req, res) => {
-    const { correo, documento, nombre, lastName, edad, contacto, eps, password } = req.body
+    const { correo, documento, nombre, lastName, edad, contacto, eps, password} = req.body
 
     try {
       const user = await this.chivasModel.register({ correo, documento, nombre, lastName, edad, contacto, eps, password })
-      res.status(200).send({ correo })
+      res.status(200).send({ message: 'Usuario registrado.' })
     } catch (error) {
+      console.log(error)
       res.status(401).json({ error: error.message })
     }
   }
@@ -48,9 +49,17 @@ export class ChivasController {
   }
 
   protected = async (req, res) => {
-    if (req.session.user) {
+    const token = req.cookies.access_token
+
+    if (!token) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.SECRET_JWT_KEY)
+      req.user = decoded
       res.send('Protected route')
-    } else {
+    } catch (error) {
       res.status(401).send('Unauthorized')
     }
   }

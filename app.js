@@ -24,7 +24,6 @@ export function createApp( { chivasModel } ) {
       const data = jwt.verify(token, process.env.SECRET_JWT_KEY)
       req.session.user = data
     } catch {}
-  
     next()
   })
   
