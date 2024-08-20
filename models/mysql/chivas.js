@@ -24,8 +24,19 @@ export class ChivasModel {
       }
   
       const user = existingUsers[0];
-  
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      
+      const [existingClients] = await connection.query(
+        'SELECT * FROM clientes WHERE id_usuario = ?',
+        [user.id_usuario]
+      );
+
+      if (existingUsers.length === 0) {
+        throw new Error('Usuario no es cliente');
+      }
+
+      const cliente = existingClients[0];
+
+      const isValidPassword = await bcrypt.compare(password, cliente.password);
   
       if (!isValidPassword) {
         throw new Error('Contraseña incorrecta');
@@ -60,9 +71,17 @@ export class ChivasModel {
     const hashedPassword = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS))
 
     const [rows] = await connection.query(
-      `INSERT INTO usuario (correo, documento, nombre, edad, contacto, eps, subtipo, password) VALUES (?, ?, ?, ?, ?, ?, 'C', ?)`,
-      [correo, documento, fullName, edad, contacto, eps, hashedPassword]
+      `INSERT INTO usuario (correo, documento, nombre, edad, contacto, eps, subtipo) VALUES (?, ?, ?, ?, ?, ?, 'C')`,
+      [correo, documento, fullName, edad, contacto, eps]
     )
+
+    const usuarioId = rows.insertId;
+
+    const [rows2] = await connection.query(
+      `INSERT INTO cliente (id, password_hash) VALUES (?, ?)`,
+      [usuarioId, hashedPassword]           
+    )
+
     return { correo, fullName, contacto, documento, eps}
   }
 }
