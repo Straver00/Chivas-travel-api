@@ -13,7 +13,7 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/login', controller.login)
   chivasRouter.post('/register', controller.register)
   chivasRouter.post('/logout', controller.logout)
-  chivasRouter.get('/protected', controller.protected)
+  //chivasRouter.get('/protected', controller.protected)
 
   return chivasRouter
 }

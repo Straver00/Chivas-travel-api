@@ -78,7 +78,7 @@ export class ChivasModel {
     const usuarioId = rows.insertId;
 
     const [rows2] = await connection.query(
-      `INSERT INTO cliente (id, password_hash) VALUES (?, ?)`,
+      `INSERT INTO cliente (id_usuario, password) VALUES (?, ?)`,
       [usuarioId, hashedPassword]           
     )
 
