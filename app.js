@@ -4,11 +4,6 @@ import 'dotenv/config.js'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 
-const corsOptions = {
-  origin: 'https://example.com', 
-  optionsSuccessStatus: 200 
-};
-
 export function createApp( { chivasModel } ) {
   const app = express()
   app.use(express.json())
