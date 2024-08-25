@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
-import zod from 'zod'
+import { z } from 'zod';
 
 
 dotenv.config()
@@ -9,6 +9,43 @@ dotenv.config()
 const connection = await mysql.createConnection(process.env.DATABASE_URL)
 
 export class ChivasModel {
+
+  static async getDestinos() {
+    const [destinos] = await connection.query(`
+      SELECT destino.nombre AS nombre_destino
+      FROM destino 
+      INNER JOIN administrador
+      ON destino.doc_administrador = administrador.documento`)
+    return destinos
+  }
+
+  static async getViajes({ destino }) {
+    if (!destino) {
+      throw new Error('El parámetro destino es requerido');
+      
+    }
+    destino = destino.replace(/-/g, ' ');
+  
+    try {
+      // Realizar la consulta a la base de datos
+      const [viajes] = await connection.query(`
+        SELECT viaje.destino, viaje.hora_salida, viaje.precio_boleto, viaje.cupo, viaje.origen
+        FROM
+          viaje
+        WHERE 
+          viaje.destino = ?`, 
+        [destino]
+      );
+  
+      // Retornar los viajes encontrados
+      return viajes;
+    } catch (error) {
+      // Manejar posibles errores
+      console.error('Error al obtener los viajes:', error);
+      throw new Error('No se pudieron obtener los viajes');
+    }
+  }
+
   static async login({ correo, password }) { 
     try {
       Validation.correo(correo);
@@ -26,7 +63,7 @@ export class ChivasModel {
       const user = existingUsers[0];
       
       const [existingClients] = await connection.query(
-        'SELECT * FROM clientes WHERE id_usuario = ?',
+        'SELECT * FROM cliente WHERE id_usuario = ?',
         [user.id_usuario]
       );
 
@@ -84,9 +121,62 @@ export class ChivasModel {
 
     return { correo, fullName, contacto, documento, eps}
   }
+
+
+
+  static createAdmin = async ({ documento, nombre, password, edad}) => {
+    Validation.documento(documento)
+    Validation.fullName(nombre)
+    Validation.password(password)
+
+    const [existingUsers] = await connection.query(
+      'SELECT * FROM administrador WHERE documento = ?',
+      [documento]
+    );
+
+    if (existingUsers.length > 0) {
+      throw new Error('El administrador ya está registrado.');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS))
+
+    const [rows] = await connection.query(
+      `INSERT INTO administrador (documento, nombre, password, edad) VALUES (?, ?, ?, ?)`,
+      [documento, nombre, hashedPassword, edad]
+    )
+
+    return { documento, nombre }
+  }
+
+  static loginAdmin = async ({ documento, password }) => {
+    Validation.documento(documento)
+    Validation.password(password)
+
+    const [existingUsers] = await connection.query(
+      'SELECT * FROM administrador WHERE documento = ?',
+      [documento]
+    );
+
+    if (existingUsers.length === 0) {
+      throw new Error('Administrador no encontrado');
+    }
+
+    const user = existingUsers[0];
+    console.log(password)
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      throw new Error('Contraseña incorrecta');
+    }
+
+    return { documento: user.documento, nombre: user.nombre };
+  }
 }
 
-import { z } from 'zod';
+
+
+
+
 
 class Validation {
   static correo(email) {
@@ -162,4 +252,6 @@ class Validation {
 
     return { success: true };
   }
-}
+  }
+  
+

@@ -7,6 +7,26 @@ export class ChivasController {
     this.chivasModel = chivasModel
   }
   
+  getDestinos = async (req, res) => {
+    try {
+      const destinos = await this.chivasModel.getDestinos()
+      res.status(200).send(destinos)
+    } catch (error) {
+      res.status(500).json({ error: error.message })
+    }
+  }
+
+  getViajes = async (req, res) => {
+    const { destino } = req.params
+
+    try {
+      const viajes = await this.chivasModel.getViajes({ destino })
+      res.status(200).send(viajes)
+    } catch (error) {
+      res.status(500).json({ error: error.message })
+    }
+  }
+
   login = async (req, res) => {
     const { correo, password } = req.body
 
@@ -44,23 +64,40 @@ export class ChivasController {
 
 
   logout = async (req, res) => {
-    res.clearCookie('access_token')
-    .send('Logged out')
+    console.log(req.cookies)
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    }).status(200).json({ message: 'Logged out' })
   }
 
   protected = async (req, res) => {
-    const token = req.cookies.access_token
+    console.log(req.user)
+    res.send(req.user)
+  }
 
-    if (!token) {
-      return res.status(401).send('Unauthorized')
-    }
+  createAdmin = async (req, res) => {
+    const { documento, nombre, password, edad} = req.body
 
     try {
-      const decoded = jwt.verify(token, process.env.SECRET_JWT_KEY)
-      req.user = decoded
-      res.send('Protected route')
+      const user = await this.chivasModel.createAdmin({ documento, nombre, password, edad })
+      res.status(200).send({ message: 'Usuario registrado.' })
     } catch (error) {
-      res.status(401).send('Unauthorized')
+      console.log(error)
+      res.status(401).json({ error: error.message })
     }
+  }
+
+  loginAdmin = async (req, res) => {
+    const { documento, password } = req.body
+    
+    try {
+      const user = await this.chivasModel.loginAdmin({ documento, password })
+      res.status(200).send({ message: 'Usuario logueado.' })
+    } catch (error) {
+      console.log(error)
+      res.status(401).json({ error: error.message })
+    } 
   }
 }
