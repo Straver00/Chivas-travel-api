@@ -9,7 +9,6 @@ dotenv.config()
 const connection = await mysql.createConnection(process.env.DATABASE_URL)
 
 export class ChivasModel {
-<<<<<<< HEAD
 
   static async getDestinos() {
     const [destinos] = await connection.query(`
@@ -47,10 +46,7 @@ export class ChivasModel {
     }
   }
 
-  static async login({ correo, password }) { 
-=======
   static async login({ correo, password }) {
->>>>>>> 639a490741ccd2f4823356c5c5822672bc006cd8
     try {
       Validation.correo(correo);
       Validation.password(password);
@@ -326,10 +322,5 @@ class Validation {
 
     return { success: true };
   }
-<<<<<<< HEAD
-  }
-  
-
-=======
 }
->>>>>>> 639a490741ccd2f4823356c5c5822672bc006cd8
+
