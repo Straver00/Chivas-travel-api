@@ -62,16 +62,6 @@ export class ChivasController {
     }
   }
 
-  createViaje = async (req, res) => {
-    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
-
-    try {
-      const viaje = await this.chivasModel.createViaje({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
-      res.status(200).send({ message: 'Viaje registrado.' })
-    } catch (error) {
-      res.status(401).json({ error: error.message })
-    }
-  }
   logout = async (req, res) => {
     console.log(req.cookies)
     res.clearCookie('access_token', {
@@ -108,5 +98,50 @@ export class ChivasController {
       console.log(error)
       res.status(401).json({ error: error.message })
     } 
+  }
+
+  createViaje = async (req, res) => {
+    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
+
+    try {
+      const viaje = await this.chivasModel.createViaje({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
+      res.status(200).send({ viaje })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  editViaje = async (req, res) => {
+    const { id_viaje } = req.params
+    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
+
+    try {
+      const viaje = await this.chivasModel.editViaje({ id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
+      res.status(200).send({ viaje })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  cancelViaje = async (req, res) => {
+    const { id_viaje } = req.params
+
+    try {
+      const viaje = await this.chivasModel.cancelViaje({ id_viaje })
+      res.status(200).send({ viaje })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  createReserva = async (req, res) => {
+    const { id_usuario, id_viaje, n_boletas} = req.body
+
+    try {
+      const reserva = await this.chivasModel.createReserva({ id_usuario, id_viaje, n_boletas})
+      res.status(200).send({ reserva })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
   }
 }

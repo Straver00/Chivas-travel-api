@@ -119,7 +119,6 @@ export class ChivasModel {
       )
   
       const usuarioId = rows.insertId;
-      console.log(usuarioId)
 
       const [rows2] = await connection.query(
         `INSERT INTO cliente (id_usuario, password) VALUES (?, ?)`,
@@ -143,7 +142,8 @@ export class ChivasModel {
         [destino]
       );
 
-      console.log(destinoexistente);
+      await connection.query(`BEGIN`);
+
       if (destinoexistente.length === 0) {
         const destinoCreado = await connection.query(
           `INSERT INTO destino (nombre, doc_administrador) VALUES (?, ?)`,
@@ -155,12 +155,125 @@ export class ChivasModel {
        `INSERT INTO viaje (doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleto, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, cancelado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
        [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso]
       );
+      await connection.query(`COMMIT`);
+      const usuarioId = rows.insertId;
+
+      return { usuarioId, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, cancelado: 0 };
+
     } catch (error) {
+      await connection.query(`ROLLBACK`);
       console.error('Error during createViaje:', error);
       throw error;
     }
   }
    
+  static async editViaje ( {id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso} ) {
+    try {
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      if (viaje.length === 0) {
+        throw new Error('El viaje no existe');
+      }
+
+      const [destinoexistente] = await connection.query(
+        "SELECT * FROM destino WHERE nombre = ?",
+        [destino]
+      );
+
+      await connection.query(`BEGIN`);
+
+      if (destinoexistente.length === 0) {
+        const destinoCreado = await connection.query(
+          `INSERT INTO destino (nombre, doc_administrador) VALUES (?, ?)`,
+          [destino, doc_administrador]
+        );
+      }
+
+      const [rows] = await connection.query(
+        'UPDATE viaje SET doc_administrador = ?, destino = ?, cupo = ?, fecha_viaje = ?, origen = ?, precio_boleto = ?, duracion_aprox = ?, comidas_incluidas = ?, hora_salida = ?, hora_regreso = ? WHERE id_viaje = ?',
+        [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, id_viaje]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso };
+
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during editViaje:', error);
+      throw error;
+    }
+  }
+
+  static async cancelViaje ({ id_viaje }) {
+    try {
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      if (viaje.length === 0) {
+        throw new Error('El viaje no existe');
+      }
+
+      const [rows] = await connection.query(
+        'UPDATE viaje SET cancelado = 1 WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      return { id_viaje, cancelado: 1 };
+
+    } catch (error) {
+      console.error('Error during cancelViaje:', error);
+      throw error;
+    }
+  }
+
+  static async createReserva ({ id_usuario, id_viaje, n_boletas }) {
+    try {
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      if (viaje.length === 0) {
+        throw new Error('El viaje no existe');
+      }
+
+      const [cliente] = await connection.query(
+        'SELECT * FROM usuario WHERE id_usuario = ?',
+        [id_usuario]
+      );
+
+      if (cliente.length === 0) {
+        throw new Error('El cliente no existe');
+      }
+
+      const cupo = viaje[0].cupo - n_boletas;
+      const montoTotal = n_boletas * viaje[0].precio_boleto;
+
+      await connection.query(`BEGIN`);
+
+      const [rows] = await connection.query(
+        'INSERT INTO reserva (id_usuario, id_viaje, n_boletas, monto_total) VALUES (?, ?, ?, ?)',
+        [id_usuario, id_viaje, n_boletas, montoTotal]
+      );
+
+      const [rows2] = await connection.query(
+        'UPDATE viaje SET cupo = ? WHERE id_viaje = ?',
+        [cupo, id_viaje]
+      );
+      
+      await connection.query(`COMMIT`);
+      return { id_viaje, id_usuario, n_boletas };
+    } catch (error) {
+      console.error('Error during createReserva:', error);
+      throw error;
+    }
+  }
+
   static async registerAdministrador ({documento, nombre, apellido, password, edad}){
     const fullName = `${nombre} ${apellido}`
     Validation.documento(documento)
