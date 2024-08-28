@@ -134,7 +134,32 @@ export class ChivasModel {
       throw error;
     }
        
+  }
+
+  static async createViaje ({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso }) {
+    try {
+      const [destinoexistente] = await connection.query(
+        "SELECT * FROM destino WHERE nombre = ?",
+        [destino]
+      );
+
+      console.log(destinoexistente);
+      if (destinoexistente.length === 0) {
+        const destinoCreado = await connection.query(
+          `INSERT INTO destino (nombre, doc_administrador) VALUES (?, ?)`,
+          [destino, doc_administrador]
+        );
+      }
+
+      const [rows] = await connection.query(
+       `INSERT INTO viaje (doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleto, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, cancelado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+       [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso]
+      );
+    } catch (error) {
+      console.error('Error during createViaje:', error);
+      throw error;
     }
+  }
    
   static async registerAdministrador ({documento, nombre, apellido, password, edad}){
     const fullName = `${nombre} ${apellido}`

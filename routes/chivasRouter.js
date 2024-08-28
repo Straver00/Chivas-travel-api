@@ -16,7 +16,8 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/logout', controller.logout)
   chivasRouter.get('/protected',  isAuth, controller.protected)
 
-
+  chivasRouter. post('/createViaje', controller.createViaje)
+  
   //chivasRouter.post('/createAdmin', controller.createAdmin)
   chivasRouter.post('/loginAdmin', controller.loginAdmin)
 

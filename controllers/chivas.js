@@ -62,7 +62,16 @@ export class ChivasController {
     }
   }
 
+  createViaje = async (req, res) => {
+    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
 
+    try {
+      const viaje = await this.chivasModel.createViaje({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
+      res.status(200).send({ message: 'Viaje registrado.' })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
   logout = async (req, res) => {
     console.log(req.cookies)
     res.clearCookie('access_token', {
