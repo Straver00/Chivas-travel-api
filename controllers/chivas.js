@@ -51,10 +51,10 @@ export class ChivasController {
   }
 
   register = async (req, res) => {
-    const { correo, documento, nombre, lastName, edad, contacto, eps, password} = req.body
+    const { correo, documento, nombre, lastName, fechaNacimiento, contacto, eps, password} = req.body
 
     try {
-      const user = await this.chivasModel.register({ correo, documento, nombre, lastName, edad, contacto, eps, password })
+      const user = await this.chivasModel.register({ correo, documento, nombre, lastName, fechaNacimiento, contacto, eps, password })
       res.status(200).send({ message: 'Usuario registrado.' })
     } catch (error) {
       console.log(error)
