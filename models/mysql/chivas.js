@@ -20,27 +20,34 @@ export class ChivasModel {
   }
 
   static async getViajes({ destino }) {
+    // Si destino no se proporciona, realizar la consulta sin filtro
     if (!destino) {
-      throw new Error('El parámetro destino es requerido');
-      
+      try {
+        const [viajes] = await connection.query(`
+          SELECT viaje.destino, viaje.hora_salida, viaje.precio_boleto, viaje.cupo, viaje.origen
+          FROM viaje
+        `);
+        
+        return viajes;
+      } catch (error) {
+        console.error('Error al obtener todos los viajes:', error);
+        throw new Error('No se pudieron obtener los viajes');
+      }
     }
+  
+    // Si destino se proporciona, reemplazar los guiones y realizar la consulta filtrada
     destino = destino.replace(/-/g, ' ');
   
     try {
-      // Realizar la consulta a la base de datos
       const [viajes] = await connection.query(`
         SELECT viaje.destino, viaje.hora_salida, viaje.precio_boleto, viaje.cupo, viaje.origen
-        FROM
-          viaje
-        WHERE 
-          viaje.destino = ?`, 
+        FROM viaje
+        WHERE viaje.destino = ?`, 
         [destino]
       );
-  
-      // Retornar los viajes encontrados
+      
       return viajes;
     } catch (error) {
-      // Manejar posibles errores
       console.error('Error al obtener los viajes:', error);
       throw new Error('No se pudieron obtener los viajes');
     }
@@ -274,6 +281,120 @@ export class ChivasModel {
     }
   }
 
+  static async getOpiniones({ destino }) {
+    try {
+      let opiniones;
+  
+      if (destino) {
+        [opiniones] = await connection.query(
+          'SELECT * FROM opinion WHERE destino = ?',
+          [destino]
+        );
+      } else {
+        [opiniones] = await connection.query(
+          'SELECT * FROM opinion'
+        );
+      }
+  
+      return opiniones;
+    } catch (error) {
+      console.error('Error during getOpiniones:', error);
+      throw error;
+    }
+  }
+
+  static async createOpinion ({ id_usuario, id_destino, calificacion, comentario }) {
+    try {
+      const [destino] = await connection.query(
+        'SELECT * FROM destino WHERE nombre = ?',
+        [id_destino]
+      );
+
+      if (destino.length === 0) {
+        throw new Error('El destino no existe');
+      }
+
+      await connection.query(`BEGIN`);
+
+      const [rows] = await connection.query(
+        'INSERT INTO opinion (id_usuario, destino, calificacion, comentario) VALUES (?, ?, ?, ?)',
+        [id_usuario, id_destino, calificacion, comentario]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_usuario, id_destino, calificacion, comentario };
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during createOpinion:', error);
+      throw error;
+    }
+  }
+
+  static async editOpinion ({ id_opinion, calificacion, comentario }) {
+    try {
+      const [opinion] = await connection.query(
+        'SELECT * FROM opinion WHERE id_opinion = ?',
+        [id_opinion]
+      );
+
+      if (opinion.length === 0) {
+        throw new Error('La opinión no existe');
+      }
+
+      await connection.query(`BEGIN`);
+
+      const [rows] = await connection.query(
+        'UPDATE opinion SET calificacion = ?, comentario = ? WHERE id_opinion = ?',
+        [calificacion, comentario, id_opinion]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_opinion, calificacion, comentario };
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during editOpinion:', error);
+      throw error;
+    }
+  }
+
+  static async createBoleto ({ id_usuario, id_reserva}) {
+    try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe');
+      }
+
+      const id_viaje = reserva[0].id_viaje;
+
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      const fechaViaje = viaje[0].fecha_viaje
+      const horaSalida = viaje[0].hora_salida
+
+      console.log(id_usuario, id_reserva, fechaViaje, horaSalida);
+      await connection.query(`BEGIN`);
+
+      const [boleto] = await connection.query(
+        'INSERT INTO boleto (id_usuario, id_reserva, fecha_viaje, hora_salida) VALUES (?, ?, ?, ?)',
+        [id_usuario, id_reserva, fechaViaje, horaSalida]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_usuario, id_reserva, fechaViaje, horaSalida };
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during createBoleto:', error);
+      throw error;
+    }
+  }
+
   static async registerAdministrador ({documento, nombre, apellido, password, edad}){
     const fullName = `${nombre} ${apellido}`
     Validation.documento(documento)
@@ -301,25 +422,6 @@ export class ChivasModel {
    
   }
  
-  static async registrarNuevoDestino ({nombre, doc_administrador}){
-    const [existingAdmins] = await connection.query(
-      'SELECT * FROM administrador WHERE documento = ?',
-      [doc_administrador]
-    );
-
-    if (existingAdmins.length === 0){
-      throw new Error('El administrador no existe');
-    }
-
-    const [result] = await connection.query (
-      `INSERT INTO destino (nombre, documento) VALUES (?,?)`,
-      [nombre, doc_administrador]
-    )
-
-    return{nombre, doc_administrador}
-  }
-
-
 
   static createAdmin = async ({ documento, nombre, password, edad}) => {
     Validation.documento(documento)

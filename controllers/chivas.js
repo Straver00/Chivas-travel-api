@@ -76,30 +76,6 @@ export class ChivasController {
     res.send(req.user)
   }
 
-  createAdmin = async (req, res) => {
-    const { documento, nombre, password, edad} = req.body
-
-    try {
-      const user = await this.chivasModel.createAdmin({ documento, nombre, password, edad })
-      res.status(200).send({ message: 'Usuario registrado.' })
-    } catch (error) {
-      console.log(error)
-      res.status(401).json({ error: error.message })
-    }
-  }
-
-  loginAdmin = async (req, res) => {
-    const { documento, password } = req.body
-    
-    try {
-      const user = await this.chivasModel.loginAdmin({ documento, password })
-      res.status(200).send({ message: 'Usuario logueado.' })
-    } catch (error) {
-      console.log(error)
-      res.status(401).json({ error: error.message })
-    } 
-  }
-
   createViaje = async (req, res) => {
     const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
 
@@ -144,4 +120,75 @@ export class ChivasController {
       res.status(401).json({ error: error.message })
     }
   }
+
+  getOpiniones = async (req, res) => {
+    const { destino } = req.params
+    
+    try {
+      console.log(destino)
+      const opiniones = await this.chivasModel.getOpiniones({ destino })
+      res.status(200).send(opiniones)
+    } catch (error) {
+      res.status(500).json({ error: error.message })
+    }
+  }
+
+  createOpinion = async (req, res) => {
+    const { id_usuario, id_destino, calificacion, comentario} = req.body
+
+    try {
+      const opinion = await this.chivasModel.createOpinion({ id_usuario, id_destino, calificacion, comentario})
+      res.status(200).send(opinion)
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  editOpinion = async (req, res) => {
+    const { id_opinion } = req.params
+    const { calificacion, comentario} = req.body
+
+    try {
+      const opinion = await this.chivasModel.editOpinion({ id_opinion, calificacion, comentario})
+      res.status(200).send(opinion)
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  createBoleto = async (req, res) => {
+    const { id_usuario, id_reserva} = req.body
+
+    try{
+      const boleto = await this.chivasModel.createBoleto({ id_usuario, id_reserva})
+      res.status(200).send(boleto)
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  createAdmin = async (req, res) => {
+    const { documento, nombre, password, edad} = req.body
+
+    try {
+      const user = await this.chivasModel.createAdmin({ documento, nombre, password, edad })
+      res.status(200).send({ message: 'Usuario registrado.' })
+    } catch (error) {
+      console.log(error)
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  loginAdmin = async (req, res) => {
+    const { documento, password } = req.body
+    
+    try {
+      const user = await this.chivasModel.loginAdmin({ documento, password })
+      res.status(200).send({ message: 'Usuario logueado.' })
+    } catch (error) {
+      console.log(error)
+      res.status(401).json({ error: error.message })
+    } 
+  }
+
 }

@@ -8,7 +8,7 @@ export const createChivasRouter = ( { chivasModel } ) => {
   const controller = new ChivasController({ chivasModel })
 
   chivasRouter.get('/destinos', controller.getDestinos)
-  chivasRouter.get('/viajes/:destino', controller.getViajes)
+  chivasRouter.get('/viajes/:destino?', controller.getViajes)
 
 
   chivasRouter.post('/login', controller.login)
@@ -20,8 +20,17 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/editViaje/:id_viaje', controller.editViaje)
   chivasRouter.post('/cancelViaje/:id_viaje', controller.cancelViaje)
   
+  // TO DO : chivasRouter.get('/reservas/:id_usuario?', controller.getReservas)
   chivasRouter.post('/createReserva', controller.createReserva)	
+  // TO DO : chivasRouter.post('/editReserva/:id_reserva', controller.editReserva)
+  // TO DO : chivasRouter.post('/cancelReserva/:id_reserva', controller.cancelReserva)
+
   
+  chivasRouter.get('/opiniones/:destino?', controller.getOpiniones)
+  chivasRouter.post('/createOpinion', controller.createOpinion)
+  chivasRouter.post('/editOpinion/:id_opinion', controller.editOpinion)
+  
+  chivasRouter.post('/createBoleto', controller.createBoleto)
   //chivasRouter.post('/createAdmin', controller.createAdmin)
   chivasRouter.post('/loginAdmin', controller.loginAdmin)
 
