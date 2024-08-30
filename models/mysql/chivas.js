@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
-import { z } from 'zod';
+import { Validation } from '../../tools/validation.js'
 
 
 dotenv.config()
@@ -9,7 +9,7 @@ dotenv.config()
 const connection = await mysql.createConnection(process.env.DATABASE_URL)
 
 export class ChivasModel {
-
+  
   static async getDestinos() {
     const [destinos] = await connection.query(`
       SELECT destino.nombre AS nombre_destino
@@ -238,6 +238,27 @@ export class ChivasModel {
     }
   }
 
+  static async getReservas({ id_usuario }) {
+    try {
+      let reservas;
+
+      if (id_usuario) {
+        [reservas] = await connection.query(
+          'SELECT * FROM reserva WHERE id_usuario = ?',
+          [id_usuario]
+        );
+      } else {
+        [reservas] = await connection.query(
+          'SELECT * FROM reserva'
+        );
+      }
+
+      return reservas;
+    } catch (error) {
+      console.error('Error during getReservas:', error);
+      throw error;
+    }
+  }
   static async createReserva ({ id_usuario, id_viaje, n_boletas }) {
     try {
       const [viaje] = await connection.query(
@@ -268,19 +289,117 @@ export class ChivasModel {
         [id_usuario, id_viaje, n_boletas, montoTotal]
       );
 
+      const id_reserva = rows.insertId;
       const [rows2] = await connection.query(
         'UPDATE viaje SET cupo = ? WHERE id_viaje = ?',
         [cupo, id_viaje]
       );
       
       await connection.query(`COMMIT`);
-      return { id_viaje, id_usuario, n_boletas };
+      return { id_reserva, id_viaje, id_usuario, n_boletas };
     } catch (error) {
       console.error('Error during createReserva:', error);
       throw error;
     }
   }
 
+  static async editReserva ({ id_reserva, n_boletas }) {
+    try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe');
+      }
+
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [reserva[0].id_viaje]
+      );
+
+      if (viaje.length === 0) {
+        throw new Error('El viaje no existe');
+      }
+
+      let cupo;
+      let montoTotal
+      if (n_boletas > reserva[0].n_boletas) {
+        cupo = viaje[0].cupo - n_boletas;
+        montoTotal = n_boletas * viaje[0].precio_boleto;
+      } else {
+        cupo = viaje[0].cupo + n_boletas;
+        montoTotal = n_boletas * viaje[0].precio_boleto;
+      }
+
+      await connection.query(`BEGIN`);
+
+      const [rows] = await connection.query(
+        'UPDATE reserva SET n_boletas = ?, monto_total = ? WHERE id_reserva = ?',
+        [n_boletas, montoTotal, id_reserva]
+      );
+
+      const [rows2] = await connection.query(
+        'UPDATE viaje SET cupo = ? WHERE id_viaje = ?',
+        [cupo, reserva[0].id_viaje]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_reserva, n_boletas };
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during editReserva:', error);
+      throw error;
+    }
+  }
+
+  static async cancelReserva ({ id_reserva }) {
+    try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe');
+      }
+
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [reserva[0].id_viaje]
+      );
+
+      if (viaje.length === 0) {
+        throw new Error('El viaje no existe');
+      }
+
+      const cupo = viaje[0].cupo + reserva[0].n_boletas;
+
+      await connection.query(`BEGIN`);
+
+      const [rows] = await connection.query(
+        'UPDATE reserva SET vigente = 0 WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      const [rows2] = await connection.query(
+        'UPDATE viaje SET cupo = ? WHERE id_viaje = ?',
+        [cupo, reserva[0].id_viaje]
+      );
+
+      const [rows3] = await connection.query(
+        'UPDATE boleto SET vigente = 0 WHERE id_reserva = ?',
+        [id_reserva]
+      );
+      
+      await connection.query(`COMMIT`);
+      return { id_reserva };
+    } catch (error) {
+      console.error('Error during cancelReserva:', error);
+      throw error;
+    }
+  }
   static async getOpiniones({ destino }) {
     try {
       let opiniones;
@@ -469,112 +588,5 @@ export class ChivasModel {
     }
 
     return { documento: user.documento, nombre: user.nombre };
-  }
-}
-
-class Validation {
-  static correo(email) {
-    const schema = z.string('El correo tiene que ser un texto').email('El correo electrónico no es válido');
-    const result = schema.safeParse(String(email));
-   
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
-
-  static documento(document) {
-    const schema = z.string('El documento tiene que ser un texto').min(8, 'El documento debe tener al menos 8 caracteres').transform(Number);
-    const result = schema.safeParse(String(document));
-   
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
-
-  static fullName(name) {
-    const schema = z.string()
-      .min(2, 'El nombre completo debe tener al menos 2 caracteres')
-      .regex(/^[A-Za-zÁÉÍÓÚÑáéíóúñ\s]+$/, 'El nombre solo debe contener letras y espacios');
-
-    const result = schema.safeParse(String(name));
-
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
-
-  static phone(phone) {
-    const schema = z.string()
-      .min(7, 'El número de teléfono debe tener al menos 7 caracteres')
-      .regex(/^\d+$/, 'El número de teléfono debe contener solo dígitos');
-
-    const result = schema.safeParse(String(phone));
-
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
-
-  static eps(eps) {
-    const schema = z.string()
-      .min(2, 'La EPS debe tener al menos 2 caracteres')
-      .regex(/^[A-Za-z\s]+$/, 'La EPS debe contener solo letras y espacios'); // Permitir solo letras y espacios
-
-    const result = schema.safeParse(String(eps));
-
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
- 
-  static mayorDeEdad(fecha_nacimiento) {
-    const schema = z.string()
-      .regex(
-        /^\d{4}-\d{2}-\d{2}$/,
-        'La fecha de nacimiento debe estar en el formato YYYY-MM-DD'
-      )
-      .refine(value => {
-        const birthDate = new Date(value);
-        const today = new Date();
-        
-        // Asegúrate de que la fecha de nacimiento sea válida
-        if (isNaN(birthDate.getTime())) {
-          return false;
-        }
-
-        // Calcular la edad
-        const age = today.getFullYear() - birthDate.getFullYear();
-        const monthDifference = today.getMonth() - birthDate.getMonth();
-        
-        // Ajustar si la fecha de nacimiento aún no ha ocurrido en el año actual
-        if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-          return age - 1 >= 18;
-        }
-        
-        return age >= 18;
-      }, 'El usuario debe ser mayor de edad');
-    
-    const result = schema.safeParse(fecha_nacimiento);
-
-    if (!result.success) {
-      // Lanzar un error con el mensaje de la validación
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
-
-  static password(password) {
-    const schema = z.string()
-      .min(8, 'La contraseña debe tener al menos 8 caracteres')
-      .max(100, 'La contraseña no puede tener más de 100 caracteres')
-      .regex(/[A-Z]/, 'La contraseña debe contener al menos una letra mayúscula')
-      .regex(/[a-z]/, 'La contraseña debe contener al menos una letra minúscula')
-      .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
-      .regex(/[\W_]/, 'La contraseña debe contener al menos un carácter especial');
-
-    const passwordValidationResult = schema.safeParse(String(password));
-
-    if (!passwordValidationResult.success) {
-      throw new Error(passwordValidationResult.error.errors.map(error => error.message).join(', '));
-    }
   }
 }

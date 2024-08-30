@@ -110,6 +110,17 @@ export class ChivasController {
     }
   }
 
+  getReservas = async (req, res) => {
+    const { id_usuario } = req.params
+
+    try {
+      const reservas = await this.chivasModel.getReservas({ id_usuario })
+      res.status(200).send(reservas)
+    } catch (error) {
+      res.status(500).json({ error: error.message })
+    }
+  }
+
   createReserva = async (req, res) => {
     const { id_usuario, id_viaje, n_boletas} = req.body
 
@@ -121,6 +132,29 @@ export class ChivasController {
     }
   }
 
+  editReserva = async (req, res) => {
+    const { id_reserva } = req.params
+    const { n_boletas} = req.body
+
+    try {
+      const reserva = await this.chivasModel.editReserva({ id_reserva, n_boletas})
+      res.status(200).send({ reserva })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  cancelReserva = async (req, res) => {
+    const { id_reserva } = req.params
+
+    try {
+      const reserva = await this.chivasModel.cancelReserva({ id_reserva })
+      res.status(200).send({ reserva })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+  
   getOpiniones = async (req, res) => {
     const { destino } = req.params
     

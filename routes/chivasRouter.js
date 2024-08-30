@@ -20,10 +20,10 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/editViaje/:id_viaje', controller.editViaje)
   chivasRouter.post('/cancelViaje/:id_viaje', controller.cancelViaje)
   
-  // TO DO : chivasRouter.get('/reservas/:id_usuario?', controller.getReservas)
+  chivasRouter.get('/reservas/:id_usuario?', controller.getReservas)
   chivasRouter.post('/createReserva', controller.createReserva)	
-  // TO DO : chivasRouter.post('/editReserva/:id_reserva', controller.editReserva)
-  // TO DO : chivasRouter.post('/cancelReserva/:id_reserva', controller.cancelReserva)
+  chivasRouter.post('/editReserva/:id_reserva', controller.editReserva)
+  chivasRouter.post('/cancelReserva/:id_reserva', controller.cancelReserva)
 
   
   chivasRouter.get('/opiniones/:destino?', controller.getOpiniones)
@@ -33,6 +33,9 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/createBoleto', controller.createBoleto)
   //chivasRouter.post('/createAdmin', controller.createAdmin)
   chivasRouter.post('/loginAdmin', controller.loginAdmin)
+
+  // TO DO: chivasRouter.post('/confirmarPago/:id_reserva', controller.confirmarPago)
+  // TO DO: chivasRouter.post('/reembolsarPago/:id_reserva', controller.reembolsarPago)
 
   return chivasRouter
 }
