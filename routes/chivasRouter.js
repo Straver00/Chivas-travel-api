@@ -34,8 +34,8 @@ export const createChivasRouter = ( { chivasModel } ) => {
   //chivasRouter.post('/createAdmin', controller.createAdmin)
   chivasRouter.post('/loginAdmin', controller.loginAdmin)
 
-  // TO DO: chivasRouter.post('/confirmarPago/:id_reserva', controller.confirmarPago)
-  // TO DO: chivasRouter.post('/reembolsarPago/:id_reserva', controller.reembolsarPago)
+  chivasRouter.post('/confirmPago/:id_reserva', controller.confirmPago)
+  chivasRouter.post('/refundPago/:id_reserva', controller.refundPago)
 
   return chivasRouter
 }

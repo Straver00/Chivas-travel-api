@@ -225,4 +225,27 @@ export class ChivasController {
     } 
   }
 
+  confirmPago = async (req, res) => {
+    const { id_reserva } = req.params
+    const { type } = req.body
+
+    try {
+      const reserva = await this.chivasModel.confirmPago({ id_reserva, type })
+      res.status(200).send({ reserva })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
+
+  refundPago = async (req, res) => {
+    const { id_reserva } = req.params
+    const { type } = req.body
+
+    try {
+      const reserva = await this.chivasModel.refundPago({ id_reserva, type })
+      res.status(200).send({ reserva })
+    } catch (error) {
+      res.status(401).json({ error: error.message })
+    }
+  }
 }

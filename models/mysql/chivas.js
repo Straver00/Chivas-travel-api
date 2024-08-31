@@ -589,4 +589,80 @@ export class ChivasModel {
 
     return { documento: user.documento, nombre: user.nombre };
   }
+
+  static async confirmPago ({ id_reserva, type }) {
+    try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe.');
+      }
+
+      if (reserva[0].pagado === 1) {
+        throw new Error('La reserva ya ha sido pagada.');
+      }
+
+      if (reserva[0].vigente === 0) {
+        throw new Error('La reserva ya no es vigente.');
+      }
+
+      const [rows] = await connection.query(
+        'UPDATE reserva SET pagado = 1, tipo_pago = ? WHERE id_reserva = ?',
+        [type, id_reserva]
+      );
+
+      return { id_reserva, pagado: 1 };
+    } catch (error) {
+      console.error('Error during confirmPago:', error);
+      throw error;
+    }
+  }
+
+  static async refundPago ({ id_reserva, type }) {
+    try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe.');
+      }
+
+      if (reserva[0].pagado === 0) {
+        throw new Error('La reserva no ha sido pagada.');
+      }
+
+      if (reserva[0].vigente === 0) {
+        throw new Error('La reserva ya no es vigente.');
+      }
+      
+      if (reserva[0].reembolso === 1) {
+        throw new Error('La reserva ya ha sido reembolsada.');
+      }
+
+      
+
+      if (type === 'total'){
+        const monto_reembolso = reserva[0].monto_total;
+        const [rows] = await connection.query(
+          'UPDATE reserva SET pagado = 0, reembolso = ?, tipo_reembolso = ? WHERE id_reserva = ?',
+          [monto_reembolso, type, id_reserva]
+      );
+    } else if (type === 'parcial') {
+      const monto_reembolso = reserva[0].monto_total * 0.5;
+      const [rows] = await connection.query(
+        'UPDATE reserva SET pagado = 0, reembolso = ?, tipo_reembolso = ? WHERE id_reserva = ?',
+        [monto_reembolso, type, id_reserva]
+      );
+      }
+      return { id_reserva, pagado: 0, reembolso: 1, tipo_reembolso: type };
+    } catch (error) {
+      console.error('Error during refundPago:', error);
+      throw error;
+    }
+  }
 }
