@@ -62,6 +62,17 @@ export class ChivasController {
     }
   }
 
+  registerInvitado = async (req, res) => {
+    const { correo, documento, nombre } = req.body
+
+    try {
+      const invitado = await this.chivasModel.registerInvitado({ correo, documento, nombre})
+      res.status(200).send({ message: 'Invitado registrado.' })
+    } catch (error) {
+      console.log(error)
+      res.status(401).json({ error: error.message })
+    }
+  }
   logout = async (req, res) => {
     console.log(req.cookies)
     res.clearCookie('access_token', {
@@ -122,10 +133,10 @@ export class ChivasController {
   }
 
   createReserva = async (req, res) => {
-    const { id_usuario, id_viaje, n_boletas} = req.body
+    const { id_usuario, id_viaje, invitados} = req.body
 
     try {
-      const reserva = await this.chivasModel.createReserva({ id_usuario, id_viaje, n_boletas})
+      const reserva = await this.chivasModel.createReserva({ id_usuario, id_viaje, invitados})
       res.status(200).send({ reserva })
     } catch (error) {
       res.status(401).json({ error: error.message })

@@ -20,11 +20,11 @@ export class ChivasModel {
   }
 
   static async getViajes({ destino }) {
-    // Si destino no se proporciona, realizar la consulta sin filtro
+
     if (!destino) {
       try {
         const [viajes] = await connection.query(`
-          SELECT viaje.destino, viaje.hora_salida, viaje.precio_boleto, viaje.cupo, viaje.origen
+          SELECT id_viaje, destino, hora_salida, precio_boleto, cupo, origen
           FROM viaje
         `);
         
@@ -35,14 +35,13 @@ export class ChivasModel {
       }
     }
   
-    // Si destino se proporciona, reemplazar los guiones y realizar la consulta filtrada
     destino = destino.replace(/-/g, ' ');
   
     try {
       const [viajes] = await connection.query(`
-        SELECT viaje.destino, viaje.hora_salida, viaje.precio_boleto, viaje.cupo, viaje.origen
+        SELECT id_viaje, destino, fecha_viaje, hora_salida, precio_boleto, cupo, origen
         FROM viaje
-        WHERE viaje.destino = ?`, 
+        WHERE destino = ? AND cupo > 0 AND cancelado = 0`, 
         [destino]
       );
       
@@ -59,7 +58,7 @@ export class ChivasModel {
       Validation.password(password);
 
       const [existingUsers] = await connection.query(
-        'SELECT * FROM usuario WHERE correo = ?',
+        `SELECT * FROM usuario WHERE correo = ? AND subtipo = 'C'`,
         [correo]
       );
  
@@ -107,7 +106,7 @@ export class ChivasModel {
       
       
       const [existingUsers] = await connection.query(
-        'SELECT * FROM usuario WHERE correo = ?',
+        `SELECT * FROM usuario WHERE correo = ? AND subtype = 'C'`,
         [correo]
       );
   
@@ -259,49 +258,145 @@ export class ChivasModel {
       throw error;
     }
   }
-  static async createReserva ({ id_usuario, id_viaje, n_boletas }) {
+
+  static async createBoleto ({ id_usuario, id_reserva}) {
     try {
+      const [reserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_reserva = ?',
+        [id_reserva]
+      );
+
+      if (reserva.length === 0) {
+        throw new Error('La reserva no existe');
+      }
+
+      const id_viaje = reserva[0].id_viaje;
+
       const [viaje] = await connection.query(
         'SELECT * FROM viaje WHERE id_viaje = ?',
         [id_viaje]
       );
 
+      const fechaViaje = viaje[0].fecha_viaje
+      const horaSalida = viaje[0].hora_salida
+
+      console.log(id_usuario, id_reserva, fechaViaje, horaSalida);
+      await connection.query(`BEGIN`);
+
+      const [boleto] = await connection.query(
+        'INSERT INTO boleto (id_usuario, id_reserva, fecha_viaje, hora_salida) VALUES (?, ?, ?, ?)',
+        [id_usuario, id_reserva, fechaViaje, horaSalida]
+      );
+
+      await connection.query(`COMMIT`);
+      return { id_usuario, id_reserva, fechaViaje, horaSalida };
+    } catch (error) {
+      await connection.query(`ROLLBACK`);
+      console.error('Error during createBoleto:', error);
+      throw error;
+    }
+  }
+  
+  static async createReserva ({ id_usuario, id_viaje, invitados }) {
+    try {
+      const [existingReserva] = await connection.query(
+        'SELECT * FROM reserva WHERE id_usuario = ? AND id_viaje = ?',
+        [id_usuario, id_viaje]
+      );
+  
+      if (existingReserva.length > 0) {
+        throw new Error('Ya tienes una reserva creada para este viaje');
+      }
+      
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+  
       if (viaje.length === 0) {
         throw new Error('El viaje no existe');
       }
-
+  
       const [cliente] = await connection.query(
-        'SELECT * FROM usuario WHERE id_usuario = ?',
+        `SELECT * FROM usuario WHERE id_usuario = ? AND subtipo = 'C'`,
         [id_usuario]
       );
-
+  
       if (cliente.length === 0) {
         throw new Error('El cliente no existe');
       }
-
+  
+      const n_boletas = invitados.length + 1;
       const cupo = viaje[0].cupo - n_boletas;
       const montoTotal = n_boletas * viaje[0].precio_boleto;
-
-      await connection.query(`BEGIN`);
-
+  
       const [rows] = await connection.query(
         'INSERT INTO reserva (id_usuario, id_viaje, n_boletas, monto_total) VALUES (?, ?, ?, ?)',
         [id_usuario, id_viaje, n_boletas, montoTotal]
       );
-
+  
       const id_reserva = rows.insertId;
-      const [rows2] = await connection.query(
+      await connection.query(
         'UPDATE viaje SET cupo = ? WHERE id_viaje = ?',
         [cupo, id_viaje]
       );
-      
+  
+      await connection.query(`BEGIN`);
+  
+      for (const invitado of invitados) {
+        try {
+          Validation.correo(invitado.correo);
+          Validation.fullName(invitado.nombre);
+          Validation.documento(invitado.documento);
+  
+          let id_invitado;
+          const [existingUsers] = await connection.query(
+            `SELECT * FROM usuario WHERE correo = ? AND subtipo = 'I'`,
+            [invitado.correo]
+          );
+  
+          if (existingUsers.length > 0) {
+            id_invitado = existingUsers[0].id_usuario;
+          } else {
+            const [insertResult] = await connection.query(
+              `INSERT INTO usuario (correo, documento, nombre, subtipo) VALUES (?, ?, ?, 'I')`,
+              [invitado.correo, invitado.documento, invitado.nombre]
+            );
+            id_invitado = insertResult.insertId;
+          }
+  
+          await this.createBoleto({ id_usuario: id_invitado, id_reserva });
+  
+          try {
+            await connection.query(
+              'INSERT INTO invitado (id_usuario, invito) VALUES (?, ?)',
+              [id_invitado, id_usuario]
+            );
+          } catch (error) {
+            if (error.code === 'ER_DUP_ENTRY') {
+              console.warn(`El invitado con id_usuario ${id_invitado} ya ha sido invitado por este usuario.`);
+            } else {
+              throw error;
+            }
+          }
+  
+        } catch (error) {
+          console.error('Error processing invitado:', invitado.correo, error);
+          await connection.query('ROLLBACK');
+          throw error;
+        }
+      }
+  
+      await this.createBoleto({ id_usuario, id_reserva });
       await connection.query(`COMMIT`);
-      return { id_reserva, id_viaje, id_usuario, n_boletas };
+  
+      return { id_reserva, id_viaje, id_usuario, invitados };
     } catch (error) {
       console.error('Error during createReserva:', error);
       throw error;
     }
   }
+  
 
   static async editReserva ({ id_reserva, n_boletas }) {
     try {
@@ -476,44 +571,6 @@ export class ChivasModel {
     }
   }
 
-  static async createBoleto ({ id_usuario, id_reserva}) {
-    try {
-      const [reserva] = await connection.query(
-        'SELECT * FROM reserva WHERE id_reserva = ?',
-        [id_reserva]
-      );
-
-      if (reserva.length === 0) {
-        throw new Error('La reserva no existe');
-      }
-
-      const id_viaje = reserva[0].id_viaje;
-
-      const [viaje] = await connection.query(
-        'SELECT * FROM viaje WHERE id_viaje = ?',
-        [id_viaje]
-      );
-
-      const fechaViaje = viaje[0].fecha_viaje
-      const horaSalida = viaje[0].hora_salida
-
-      console.log(id_usuario, id_reserva, fechaViaje, horaSalida);
-      await connection.query(`BEGIN`);
-
-      const [boleto] = await connection.query(
-        'INSERT INTO boleto (id_usuario, id_reserva, fecha_viaje, hora_salida) VALUES (?, ?, ?, ?)',
-        [id_usuario, id_reserva, fechaViaje, horaSalida]
-      );
-
-      await connection.query(`COMMIT`);
-      return { id_usuario, id_reserva, fechaViaje, horaSalida };
-    } catch (error) {
-      await connection.query(`ROLLBACK`);
-      console.error('Error during createBoleto:', error);
-      throw error;
-    }
-  }
-
   static async registerAdministrador ({documento, nombre, apellido, password, edad}){
     const fullName = `${nombre} ${apellido}`
     Validation.documento(documento)
@@ -613,6 +670,8 @@ export class ChivasModel {
         'UPDATE reserva SET pagado = 1, tipo_pago = ? WHERE id_reserva = ?',
         [type, id_reserva]
       );
+
+
 
       return { id_reserva, pagado: 1 };
     } catch (error) {
