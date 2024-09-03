@@ -14,17 +14,7 @@ export function createApp( { chivasModel } ) {
 
   app.use(cookieParser())
   app.disable('x-powered-by')
-  
-  app.use((req, res, next) => {
-    const token = req.cookies.access_token
-    req.session = { user: null }
-  
-    try {
-      const data = jwt.verify(token, process.env.SECRET_JWT_KEY)
-      req.session.user = data
-    } catch {}
-    next()
-  })
+
   
   app.use( '/chivas', createChivasRouter({ chivasModel }))
 

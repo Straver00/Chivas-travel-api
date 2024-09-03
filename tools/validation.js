@@ -42,18 +42,6 @@ export class Validation {
       throw new Error(result.error.errors.map(e => e.message).join(', '));
     }
   }
-
-  static eps(eps) {
-    const schema = z.string()
-      .min(2, 'La EPS debe tener al menos 2 caracteres')
-      .regex(/^[A-Za-z\s]+$/, 'La EPS debe contener solo letras y espacios'); // Permitir solo letras y espacios
-
-    const result = schema.safeParse(String(eps));
-
-    if (!result.success) {
-      throw new Error(result.error.errors.map(e => e.message).join(', '));
-    }
-  }
  
   static mayorDeEdad(fecha_nacimiento) {
     const schema = z.string()

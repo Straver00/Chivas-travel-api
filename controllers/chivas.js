@@ -51,10 +51,10 @@ export class ChivasController {
   }
 
   register = async (req, res) => {
-    const { correo, documento, nombre, lastName, fechaNacimiento, contacto, eps, password} = req.body
+    const { correo, documento, nombre, lastName, fechaNacimiento, contacto, password} = req.body
 
     try {
-      const user = await this.chivasModel.register({ correo, documento, nombre, lastName, fechaNacimiento, contacto, eps, password })
+      const user = await this.chivasModel.register({ correo, documento, nombre, lastName, fechaNacimiento, contacto, password })
       res.status(200).send({ message: 'Usuario registrado.' })
     } catch (error) {
       console.log(error)
@@ -73,6 +73,7 @@ export class ChivasController {
       res.status(401).json({ error: error.message })
     }
   }
+  
   logout = async (req, res) => {
     console.log(req.cookies)
     res.clearCookie('access_token', {
@@ -83,15 +84,24 @@ export class ChivasController {
   }
 
   protected = async (req, res) => {
-    console.log(req.user)
     res.send(req.user)
   }
 
-  createViaje = async (req, res) => {
-    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
+  getViajesId = async (req, res) => {
+    const { id_viaje } = req.params
 
     try {
-      const viaje = await this.chivasModel.createViaje({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
+      const viaje = await this.chivasModel.getViajesId({ id_viaje })
+      res.status(200).send(viaje)
+    } catch (error) {
+      res.status(500).json({ error: error.message })
+    }
+  }
+  createViaje = async (req, res) => {
+    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso } = req.body
+
+    try {
+      const viaje = await this.chivasModel.createViaje({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso })
       res.status(200).send({ viaje })
     } catch (error) {
       res.status(401).json({ error: error.message })
@@ -100,10 +110,10 @@ export class ChivasController {
 
   editViaje = async (req, res) => {
     const { id_viaje } = req.params
-    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso } = req.body
+    const { doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso } = req.body
 
     try {
-      const viaje = await this.chivasModel.editViaje({ id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso })
+      const viaje = await this.chivasModel.editViaje({ id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso })
       res.status(200).send({ viaje })
     } catch (error) {
       res.status(401).json({ error: error.message })
@@ -115,6 +125,7 @@ export class ChivasController {
 
     try {
       const viaje = await this.chivasModel.cancelViaje({ id_viaje })
+      console.log(viaje)
       res.status(200).send({ viaje })
     } catch (error) {
       res.status(401).json({ error: error.message })
@@ -228,12 +239,37 @@ export class ChivasController {
     const { documento, password } = req.body
     
     try {
-      const user = await this.chivasModel.loginAdmin({ documento, password })
-      res.status(200).send({ message: 'Usuario logueado.' })
+      const admin = await this.chivasModel.loginAdmin({ documento, password })
+      const adminToken = jwt.sign(admin, 
+        process.env.SECRET_JWT_KEY,
+      {
+        expiresIn: '1h'
+      })
+
+      res.cookie('admin_token', adminToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 1000 * 60 * 60
+      }).send({ admin, adminToken })
     } catch (error) {
       console.log(error)
       res.status(401).json({ error: error.message })
     } 
+  }
+
+  logoutAdmin = async (req, res) => {
+    res.clearCookie('admin_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    })
+    .status(200)
+    .json({ message: 'Logout successful' })
+  }
+
+  protectedAdmin = async (req, res) => {
+    res.send(req.user)
   }
 
   confirmPago = async (req, res) => {

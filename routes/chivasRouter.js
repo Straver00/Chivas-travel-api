@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { ChivasController } from '../controllers/chivas.js'
 import { isAuth } from '../tools/auth.js'
+import { isAdmin } from '../tools/auth.js'
 
 export const createChivasRouter = ( { chivasModel } ) => {
   const chivasRouter = Router()
@@ -16,6 +17,7 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.post('/logout', controller.logout)
   chivasRouter.get('/protected',  isAuth, controller.protected)
 
+  chivasRouter.get('/viajesId/:id_viaje?', controller.getViajesId)
   chivasRouter.post('/createViaje', controller.createViaje)
   chivasRouter.post('/editViaje/:id_viaje', controller.editViaje)
   chivasRouter.post('/cancelViaje/:id_viaje', controller.cancelViaje)
@@ -29,10 +31,13 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.get('/opiniones/:destino?', controller.getOpiniones)
   chivasRouter.post('/createOpinion', controller.createOpinion)
   chivasRouter.post('/editOpinion/:id_opinion', controller.editOpinion)
-  
   chivasRouter.post('/createBoleto', controller.createBoleto)
+
   //chivasRouter.post('/createAdmin', controller.createAdmin)
   chivasRouter.post('/loginAdmin', controller.loginAdmin)
+  chivasRouter.post('/logoutAdmin', controller.logoutAdmin)
+  chivasRouter.get('/protectedAdmin', isAdmin, controller.protectedAdmin)
+  
 
   chivasRouter.post('/confirmPago/:id_reserva', controller.confirmPago)
   chivasRouter.post('/refundPago/:id_reserva', controller.refundPago)

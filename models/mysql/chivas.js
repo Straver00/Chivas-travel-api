@@ -24,7 +24,7 @@ export class ChivasModel {
     if (!destino) {
       try {
         const [viajes] = await connection.query(`
-          SELECT id_viaje, destino, hora_salida, precio_boleto, cupo, origen
+          SELECT id_viaje, destino, fecha_viaje, hora_salida, hora_regreso, precio_boleto, cupo, origen, cancelado
           FROM viaje
         `);
         
@@ -84,8 +84,8 @@ export class ChivasModel {
       if (!isValidPassword) {
         throw new Error('Contraseña incorrecta');
       }
- 
-      return { email: user.correo, fullName: user.nombre, contacto: user.contacto, documento: user.documento, eps: user.eps };
+      
+      return { id_usuario:user.id_usuario, email: user.correo, fullName: user.nombre, contacto: user.contacto, documento: user.documento, eps: user.eps };
  
     } catch (error) {
       console.error('Error during login:', error);
@@ -93,20 +93,19 @@ export class ChivasModel {
     }
   }
  
-  static async register ({ correo, documento, nombre, lastName, fechaNacimiento, contacto, eps, password }) {
+  static async register ({ correo, documento, nombre, lastName, fechaNacimiento, contacto, password }) {
     try{
       const fullName = `${nombre} ${lastName}`
       Validation.correo(correo)
       Validation.documento(documento)
       Validation.fullName(fullName)
       Validation.phone(contacto)
-      Validation.eps(eps)
       Validation.password(password)
       Validation.mayorDeEdad(fechaNacimiento)
       
       
       const [existingUsers] = await connection.query(
-        `SELECT * FROM usuario WHERE correo = ? AND subtype = 'C'`,
+        `SELECT * FROM usuario WHERE correo = ? AND subtipo = 'C'`,
         [correo]
       );
   
@@ -120,8 +119,8 @@ export class ChivasModel {
       await connection.query(`BEGIN`);
       
       const [rows] = await connection.query(
-        `INSERT INTO usuario (correo, documento, nombre, fecha_nacimiento, contacto, eps, subtipo) VALUES (?, ?, ?, ?, ?, ?, 'C')`,
-        [correo, documento, fullName, fechaNacimiento, contacto, eps]
+        `INSERT INTO usuario (correo, documento, nombre, fecha_nacimiento, contacto, subtipo) VALUES (?, ?, ?, ?, ?, 'C')`,
+        [correo, documento, fullName, fechaNacimiento, contacto]
       )
   
       const usuarioId = rows.insertId;
@@ -141,7 +140,21 @@ export class ChivasModel {
        
   }
 
-  static async createViaje ({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso }) {
+  static async getViajesId({ id_viaje }) {
+    try {
+      const [viaje] = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [id_viaje]
+      );
+
+      return viaje;
+    } catch {
+      console.error('Error during getViajesId:', error);
+      throw error;
+    }
+  }
+
+  static async createViaje ({ doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso }) {
     try {
       const [destinoexistente] = await connection.query(
         "SELECT * FROM destino WHERE nombre = ?",
@@ -158,13 +171,13 @@ export class ChivasModel {
       }
 
       const [rows] = await connection.query(
-       `INSERT INTO viaje (doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleto, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, cancelado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-       [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso]
+       `INSERT INTO viaje (doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleto, comidas_incluidas, hora_salida, hora_regreso, cancelado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+       [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso]
       );
       await connection.query(`COMMIT`);
       const usuarioId = rows.insertId;
 
-      return { usuarioId, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, cancelado: 0 };
+      return { usuarioId, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso, cancelado: 0 };
 
     } catch (error) {
       await connection.query(`ROLLBACK`);
@@ -173,7 +186,7 @@ export class ChivasModel {
     }
   }
    
-  static async editViaje ( {id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso} ) {
+  static async editViaje ( {id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso} ) {
     try {
       const [viaje] = await connection.query(
         'SELECT * FROM viaje WHERE id_viaje = ?',
@@ -199,12 +212,12 @@ export class ChivasModel {
       }
 
       const [rows] = await connection.query(
-        'UPDATE viaje SET doc_administrador = ?, destino = ?, cupo = ?, fecha_viaje = ?, origen = ?, precio_boleto = ?, duracion_aprox = ?, comidas_incluidas = ?, hora_salida = ?, hora_regreso = ? WHERE id_viaje = ?',
-        [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso, id_viaje]
+        'UPDATE viaje SET doc_administrador = ?, destino = ?, cupo = ?, fecha_viaje = ?, origen = ?, precio_boleto = ?, comidas_incluidas = ?, hora_salida = ?, hora_regreso = ? WHERE id_viaje = ?',
+        [doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso, id_viaje]
       );
 
       await connection.query(`COMMIT`);
-      return { id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, duracion_aprox, comidas_incluidas, hora_salida, hora_regreso };
+      return { id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso };
 
     } catch (error) {
       await connection.query(`ROLLBACK`);
@@ -240,13 +253,13 @@ export class ChivasModel {
   static async getReservas({ id_usuario }) {
     try {
       let reservas;
-
       if (id_usuario) {
         [reservas] = await connection.query(
-          'SELECT * FROM reserva WHERE id_usuario = ?',
+          'SELECT * FROM reserva WHERE id_usuario = ? AND vigente = 1',
           [id_usuario]
         );
-      } else {
+      }
+       else {
         [reservas] = await connection.query(
           'SELECT * FROM reserva'
         );
@@ -345,6 +358,7 @@ export class ChivasModel {
   
       for (const invitado of invitados) {
         try {
+          console.log(invitado);
           Validation.correo(invitado.correo);
           Validation.fullName(invitado.nombre);
           Validation.documento(invitado.documento);
@@ -460,6 +474,14 @@ export class ChivasModel {
         throw new Error('La reserva no existe');
       }
 
+      if (reserva[0].vigente === 0) {
+        throw new Error('La reserva ya no es vigente');
+      }
+
+      if (reserva[0].pagado === 1) {
+        throw new Error('La reserva ya ha sido pagada');
+      }
+      
       const [viaje] = await connection.query(
         'SELECT * FROM viaje WHERE id_viaje = ?',
         [reserva[0].id_viaje]
