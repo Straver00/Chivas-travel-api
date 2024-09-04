@@ -29,6 +29,9 @@ importers:
       mysql2:
         specifier: ^3.11.0
         version: 3.11.0
+      nodemailer:
+        specifier: ^6.9.15
+        version: 6.9.15
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -660,6 +663,10 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
+
+  nodemailer@6.9.15:
+    resolution: {integrity: sha512-AHf04ySLC6CIfuRtRiEYtGEXgRfa6INgWGluDhnxTZhHSKvrBu7lc1VVchQ0d8nPc4cFaZoPq8vkyNoZr0TpGQ==}
+    engines: {node: '>=6.0.0'}
 
   nopt@5.0.0:
     resolution: {integrity: sha512-Tbj67rffqceeLpcRXrT7vKAN8CwfPeIBgM7E6iBkmKLV7bEMwpGgYLGv0jACUsECaa/vuxP0IjEont6umdMgtQ==}
@@ -1571,6 +1578,8 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+
+  nodemailer@6.9.15: {}
 
   nopt@5.0.0:
     dependencies:

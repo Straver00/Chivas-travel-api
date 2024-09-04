@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
 import { Validation } from '../../tools/validation.js'
-
+import nodemailer from 'nodemailer'
 
 dotenv.config()
 
@@ -24,10 +24,10 @@ export class ChivasModel {
     if (!destino) {
       try {
         const [viajes] = await connection.query(`
-          SELECT id_viaje, destino, fecha_viaje, hora_salida, hora_regreso, precio_boleto, cupo, origen, cancelado
-          FROM viaje
+          SELECT id_viaje, destino, fecha_viaje, hora_salida, hora_regreso, precio_boleto, comidas_incluidas, cupo, origen, cancelado
+          FROM viaje 
+          ORDER BY id_viaje DESC
         `);
-        
         return viajes;
       } catch (error) {
         console.error('Error al obtener todos los viajes:', error);
@@ -217,6 +217,7 @@ export class ChivasModel {
       );
 
       await connection.query(`COMMIT`);
+      console.log('editViaje', { id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso });
       return { id_viaje, doc_administrador, destino, cupo, fecha_viaje, origen, precio_boleta, comidas_incluidas, hora_salida, hora_regreso };
 
     } catch (error) {
@@ -264,7 +265,6 @@ export class ChivasModel {
           'SELECT * FROM reserva'
         );
       }
-
       return reservas;
     } catch (error) {
       console.error('Error during getReservas:', error);
@@ -293,7 +293,7 @@ export class ChivasModel {
       const fechaViaje = viaje[0].fecha_viaje
       const horaSalida = viaje[0].hora_salida
 
-      console.log(id_usuario, id_reserva, fechaViaje, horaSalida);
+
       await connection.query(`BEGIN`);
 
       const [boleto] = await connection.query(
@@ -659,7 +659,6 @@ export class ChivasModel {
     }
 
     const user = existingUsers[0];
-    console.log(password)
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
@@ -669,7 +668,7 @@ export class ChivasModel {
     return { documento: user.documento, nombre: user.nombre };
   }
 
-  static async confirmPago ({ id_reserva, type }) {
+  static async confirmPago ({ id_reserva, id_usuario}) {
     try {
       const [reserva] = await connection.query(
         'SELECT * FROM reserva WHERE id_reserva = ?',
@@ -688,12 +687,45 @@ export class ChivasModel {
         throw new Error('La reserva ya no es vigente.');
       }
 
-      const [rows] = await connection.query(
-        'UPDATE reserva SET pagado = 1, tipo_pago = ? WHERE id_reserva = ?',
-        [type, id_reserva]
+      const [usuario] = await connection.query(
+        'SELECT * FROM usuario WHERE id_usuario = ?',
+        [id_usuario]
       );
 
+      const viaje = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [reserva[0].id_viaje]
+      );
+      const destino = viaje[0][0].destino
+      const correo = usuario[0].correo;
+      const dominio = correo.split('@')[1].split('.')[0];
 
+      const transporter = nodemailer.createTransport({
+        service: dominio,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: correo,
+        subject: 'Pago confirmado',
+        text: `Tu viaje en Chiva a ${destino} ha sido confirmado! Revisa el estado de tu reserva en nuestra pagina Web.`
+      };
+
+      const [rows] = await connection.query(
+        `UPDATE reserva SET pagado = 1, tipo_pago = 'Dinero' WHERE id_reserva = ?`,
+        [id_reserva]
+      );
+
+      transporter.sendMail(mailOptions, function(error, info){
+        if (error) {
+          throw new Error('Error al enviar el correo' + error);
+        } else {
+          return { id_reserva, pagado: 1 };
+        }
+      });
 
       return { id_reserva, pagado: 1 };
     } catch (error) {
@@ -702,7 +734,7 @@ export class ChivasModel {
     }
   }
 
-  static async refundPago ({ id_reserva, type }) {
+  static async refundPago ({ id_reserva }) {
     try {
       const [reserva] = await connection.query(
         'SELECT * FROM reserva WHERE id_reserva = ?',
@@ -725,8 +757,18 @@ export class ChivasModel {
         throw new Error('La reserva ya ha sido reembolsada.');
       }
 
-      
-
+      const viaje = await connection.query(
+        'SELECT * FROM viaje WHERE id_viaje = ?',
+        [reserva[0].id_viaje]
+      );
+      let type;
+      const tiempo = new Date(viaje[0][0].fecha_viaje) - new Date();
+      const dias = tiempo / 86400000;
+      if (dias < 3) {
+        type = 'parcial';
+      } else {
+        type = 'total';
+      }
       if (type === 'total'){
         const monto_reembolso = reserva[0].monto_total;
         const [rows] = await connection.query(
@@ -740,7 +782,7 @@ export class ChivasModel {
         [monto_reembolso, type, id_reserva]
       );
       }
-      return { id_reserva, pagado: 0, reembolso: 1, tipo_reembolso: type };
+      return { id_reserva, reembolso: 1 };
     } catch (error) {
       console.error('Error during refundPago:', error);
       throw error;

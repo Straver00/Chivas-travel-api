@@ -39,7 +39,7 @@ export const createChivasRouter = ( { chivasModel } ) => {
   chivasRouter.get('/protectedAdmin', isAdmin, controller.protectedAdmin)
   
 
-  chivasRouter.post('/confirmPago/:id_reserva', controller.confirmPago)
+  chivasRouter.post('/confirmPago/:id_reserva', isAdmin, controller.confirmPago)
   chivasRouter.post('/refundPago/:id_reserva', controller.refundPago)
 
   return chivasRouter
