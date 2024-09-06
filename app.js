@@ -8,7 +8,7 @@ export function createApp( { chivasModel } ) {
   const app = express()
   app.use(express.json())
   app.use(cors({
-    origin: 'https://straver00.github.io/Chivas-travel/', 
+    origin: 'https://straver00.github.io', 
     credentials: true
   }))
   app.use(cookieParser())
