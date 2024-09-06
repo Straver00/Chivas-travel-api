@@ -85,7 +85,7 @@ export class ChivasModel {
         throw new Error('Contraseña incorrecta');
       }
       
-      return { id_usuario:user.id_usuario, email: user.correo, fullName: user.nombre, contacto: user.contacto, documento: user.documento, eps: user.eps };
+      return { id_usuario:user.id_usuario, email: user.correo, fullName: user.nombre, contacto: user.contacto, documento: user.documento};
  
     } catch (error) {
       console.error('Error during login:', error);
@@ -108,7 +108,7 @@ export class ChivasModel {
         `SELECT * FROM usuario WHERE correo = ? AND subtipo = 'C'`,
         [correo]
       );
-  
+      
       if (existingUsers.length > 0) {
         throw new Error('El usuario ya existe');
       }
@@ -132,7 +132,7 @@ export class ChivasModel {
       
       await connection.query(`COMMIT`);
       
-      return { correo, fullName, contacto, documento, eps}
+      return { correo, fullName, contacto, documento}
     } catch (error){
       await connection.query(`ROLLBACK`);
       throw error;
