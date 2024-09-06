@@ -668,7 +668,7 @@ export class ChivasModel {
     return { documento: user.documento, nombre: user.nombre };
   }
 
-  static async confirmPago ({ id_reserva, id_usuario}) {
+  static async confirmPago ({ id_reserva }) {
     try {
       const [reserva] = await connection.query(
         'SELECT * FROM reserva WHERE id_reserva = ?',
@@ -686,6 +686,8 @@ export class ChivasModel {
       if (reserva[0].vigente === 0) {
         throw new Error('La reserva ya no es vigente.');
       }
+      
+      const id_usuario = reserva[0].id_usuario;
 
       const [usuario] = await connection.query(
         'SELECT * FROM usuario WHERE id_usuario = ?',
@@ -696,6 +698,18 @@ export class ChivasModel {
         'SELECT * FROM viaje WHERE id_viaje = ?',
         [reserva[0].id_viaje]
       );
+
+      const [updateboletos] = await connection.query(
+        `UPDATE boleto SET vigente = 1 WHERE id_reserva = ?`,
+        [id_reserva]
+      );
+
+      const [boletos] = await connection.query(
+        `SELECT * FROM boleto WHERE id_reserva = ?`,
+        [id_reserva]
+      );
+      const ids_boletos = boletos.map(boleto => boleto.id_boleta);
+
       const destino = viaje[0][0].destino
       const correo = usuario[0].correo;
       const dominio = correo.split('@')[1].split('.')[0];
@@ -711,7 +725,18 @@ export class ChivasModel {
         from: process.env.EMAIL_USER,
         to: correo,
         subject: 'Pago confirmado',
-        text: `Tu viaje en Chiva a ${destino} ha sido confirmado! Revisa el estado de tu reserva en nuestra pagina Web.`
+        text: `
+Hola,
+Tu viaje en Chiva a ${destino} ha sido confirmado!
+Revisa el estado de tu reserva en nuestra página web.
+A continuación se muestran los códigos de tus boletos:
+${ids_boletos.join('\n')}
+Recuerda que estos códigos son necesarios para abordar el vehículo.
+¡Gracias por viajar con nosotros!
+
+Saludos,
+El equipo de Chivas.
+`
       };
 
       const [rows] = await connection.query(
@@ -756,6 +781,11 @@ export class ChivasModel {
       if (reserva[0].reembolso === 1) {
         throw new Error('La reserva ya ha sido reembolsada.');
       }
+
+      const [boletos] = await connection.query(
+        `UPDATE boleto SET vigente = 0 WHERE id_reserva = ?`,
+        [id_reserva]
+      );
 
       const viaje = await connection.query(
         'SELECT * FROM viaje WHERE id_viaje = ?',

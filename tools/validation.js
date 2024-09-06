@@ -11,7 +11,7 @@ export class Validation {
   }
 
   static documento(document) {
-    const schema = z.string('El documento tiene que ser un texto').min(8, 'El documento debe tener al menos 8 caracteres').transform(Number);
+    const schema = z.string('El documento tiene que ser un texto').min(4, 'El documento debe tener al menos 8 caracteres').transform(Number);
     const result = schema.safeParse(String(document));
    
     if (!result.success) {

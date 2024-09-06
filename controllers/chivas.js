@@ -274,10 +274,9 @@ export class ChivasController {
 
   confirmPago = async (req, res) => {
     const { id_reserva } = req.params
-    const { id_usuario } = req.body
 
     try {
-      const reserva = await this.chivasModel.confirmPago({ id_reserva, id_usuario  })
+      const reserva = await this.chivasModel.confirmPago({ id_reserva})
       res.status(200).send({ reserva })
     } catch (error) {
       res.status(401).json({ error: error.message })
